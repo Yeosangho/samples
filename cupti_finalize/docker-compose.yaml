@@ -1,0 +1,228 @@
+version: '3.8'
+
+services:
+  gpu0:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=0
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    working_dir: /home/ysh/cupti-kernel-trace/pytorch-cifar10
+    command: bash -c "python3 main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu0.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['0']
+
+  gpu1:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=1
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu1.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['1']
+
+  gpu2:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=2
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu2.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['2']
+
+  gpu3:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=3
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu3.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['3']
+
+  gpu4:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=0
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu4.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['0']
+
+  gpu5:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=1
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu5.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['1']
+
+  gpu6:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=2
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu6.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['2']
+
+  gpu7:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=3
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu7.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['3']
+
+  gpu8:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=0
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu8.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['0']
+
+  gpu9:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=1
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu9.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['1']
+
+  gpu10:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=2
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu10.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['2']
+
+  gpu11:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    environment:
+      #- CUDA_INJECTION64_PATH=/home/ysh/cupti-kernel-trace/cupti_finalize/libCuptiFinalize.so
+      - CUDA_INJECTION64_PATH=/home/ysh/samples/cupti_finalize/libCuptiFinalize.so 
+      - GPU_INDEX=3
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "python3 /home/ysh/cupti-kernel-trace/pytorch-cifar10/main_wo_cudaprofiler.py --batch 2 --iters 111111111111 --gpu 0 > /home/ysh/logs/gpu11.log 2>&1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              driver: nvidia
+              device_ids: ['3']
+
+
+  clean_tmp:
+    image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+    volumes:
+      - /tmp:/tmp
+      - /home/ysh:/home/ysh
+    command: bash -c "/home/ysh/cupti-kernel-trace/remove_tmp.sh > /home/ysh/logs/clean_tmp.log 2>&1"
+

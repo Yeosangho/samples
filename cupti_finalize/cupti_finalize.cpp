@@ -265,7 +265,7 @@ void *DynamicAttachDetach(
             printf("\nCUPTI attach starting ...\n");
             
             SetupCupti();
-            //cuptiActivityEnableLatencyTimestamps(1);
+            cuptiActivityEnableLatencyTimestamps(1);
             injectionGlobals.tracingEnabled = 1;
 
             printf("CUPTI attach completed.\n");
@@ -294,7 +294,7 @@ InitializeInjection(void)
 
     // Initialize CUPTI.
     SetupCupti();
-    //CUPTI_API_CALL(cuptiActivityEnableLatencyTimestamps(1));
+    CUPTI_API_CALL(cuptiActivityEnableLatencyTimestamps(1));
     injectionGlobals.tracingEnabled = 1;
 
     // Launch the thread.

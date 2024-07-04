@@ -210,7 +210,11 @@ SetupCupti(void)
     // Enable CUPTI activities.
     //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
     //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+
     CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+    CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
+    //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
+    CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
 }
 
 void *DynamicAttachDetach(
@@ -233,6 +237,10 @@ void *DynamicAttachDetach(
 
             // Force flush activity buffers.
             CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+            CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
+            //CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
+   	    CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
+
             CUPTI_API_CALL(cuptiActivityFlushAll(1));
             injectionGlobals.detachCupti = 1;
 
@@ -257,7 +265,7 @@ void *DynamicAttachDetach(
             printf("\nCUPTI attach starting ...\n");
             
             SetupCupti();
-            cuptiActivityEnableLatencyTimestamps(1);
+            //cuptiActivityEnableLatencyTimestamps(1);
             injectionGlobals.tracingEnabled = 1;
 
             printf("CUPTI attach completed.\n");
@@ -286,7 +294,7 @@ InitializeInjection(void)
 
     // Initialize CUPTI.
     SetupCupti();
-    CUPTI_API_CALL(cuptiActivityEnableLatencyTimestamps(1));
+    //CUPTI_API_CALL(cuptiActivityEnableLatencyTimestamps(1));
     injectionGlobals.tracingEnabled = 1;
 
     // Launch the thread.

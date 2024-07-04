@@ -2308,7 +2308,7 @@ BufferRequested(
     printf("request\n");
     *pSize = globals.activityBufferSize;
     *ppBuffer = ALIGN_BUFFER(pBuffer, ALIGN_SIZE);
-    *pMaxNumRecords = 50000;
+    *pMaxNumRecords = 5000;
 }
 
 static void CUPTIAPI
@@ -2319,6 +2319,7 @@ BufferCompleted(
     size_t size,
     size_t validSize)
 {
+    printf("completed\n");
     if (validSize > 0)
     {
         printf("completed\n");

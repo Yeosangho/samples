@@ -81,7 +81,7 @@ InitializeInjectionGlobals(void)
     injectionGlobals.initialized        = 0;
     injectionGlobals.subscriberHandle   = NULL;
     injectionGlobals.detachCupti        = 0;
-    injectionGlobals.frequency          = 5; // in seconds
+    injectionGlobals.frequency          = 10; // in seconds
     injectionGlobals.tracingEnabled     = 0;
     injectionGlobals.terminateThread    = 0;
     injectionGlobals.mutexFinalize      = PTHREAD_MUTEX_INITIALIZER;

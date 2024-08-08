@@ -2305,7 +2305,6 @@ BufferRequested(
 {
     uint8_t *pBuffer = (uint8_t *) malloc(globals.activityBufferSize + ALIGN_SIZE);
     MEMORY_ALLOCATION_CALL(pBuffer);
-    printf("request\n");
     *pSize = globals.activityBufferSize;
     *ppBuffer = ALIGN_BUFFER(pBuffer, ALIGN_SIZE);
     *pMaxNumRecords = 5000;
@@ -2319,10 +2318,8 @@ BufferCompleted(
     size_t size,
     size_t validSize)
 {
-    printf("completed\n");
     if (validSize > 0)
     {
-        printf("completed\n");
         FILE *pOutputFile = globals.pOutputFile;
         if (!pOutputFile)
         {

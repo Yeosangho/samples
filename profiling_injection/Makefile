@@ -6,7 +6,7 @@ ifndef OS
  HOST_ARCH := $(shell uname -m)
 endif
 
-CUDA_INSTALL_PATH ?= ../../../..
+CUDA_INSTALL_PATH ?= /usr/local/cuda
 PROFILER_HOST_UTILS_SRC ?= ../extensions/src/profilerhost_util
 NVCC := "$(CUDA_INSTALL_PATH)/bin/nvcc"
 INCLUDES := -I"$(CUDA_INSTALL_PATH)/include" -I../../include -I../extensions/include/profilerhost_util -I../extensions/include/c_util -I../common
@@ -26,7 +26,7 @@ else
         LIB_PATH ?= $(CUDA_INSTALL_PATH)/targets/$(TARGET_ARCH)-$(TARGET_OS)/lib
         TARGET_CUDA_PATH = -L $(LIB_PATH)/stubs
     else
-        EXTRAS_LIB_PATH := ../../lib64
+        EXTRAS_LIB_PATH := /usr/local/cuda/lib64
         LIB_PATH ?= $(CUDA_INSTALL_PATH)/lib64
     endif
 endif

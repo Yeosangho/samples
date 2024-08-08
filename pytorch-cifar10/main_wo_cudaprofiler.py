@@ -71,8 +71,8 @@ args = parser.parse_args()
 
 # Set the GPU device
 if torch.cuda.is_available():
-    torch.cuda.set_device(args.gpu)
-    device = f'cuda:{args.gpu}'
+    #torch.cuda.set_device(args.gpu)
+    device = f'cuda'
 else:
     device = 'cpu'
 
@@ -158,7 +158,7 @@ def train(epoch):
     start.record()
     start_device = time.time()
     for batch_idx in range(len(trainloader)):
-        if batch_idx > args.iters :
+        if batch_idx > args.iters and args.iters != -1:
             break
         try:
             inputs, targets = next(data_iter)  # Get the next batch

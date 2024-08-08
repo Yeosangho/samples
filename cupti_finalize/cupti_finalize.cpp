@@ -1,29 +1,30 @@
 /*
- * Copyright 2020-2022 NVIDIA Corporation. All rights reserved.
- *
- * Sample CUPTI based injection to attach and detach CUPTI
- * For detaching, it uses CUPTI API cuptiFinalize().
- *
- * It is recommended to invoke API cuptiFinalize() in the
- * exit callsite of any CUDA Driver/Runtime API.
- *
- * API cuptiFinalize() destroys and cleans up all the
- * resources associated with CUPTI in the current process.
- * After CUPTI detaches from the process, the process will
- * keep on running with no CUPTI attached to it.
- *
- * CUPTI can be attached by calling any CUPTI API as CUPTI
- * supports lazy initialization. Any subsequent CUPTI API
- * call will reinitialize the CUPTI.
- *
- * You can attach and detach CUPTI any number of times.
- *
- * After building the sample, set the following environment variable
- * export CUDA_INJECTION64_PATH=<full_path>/libCuptiFinalize.so
- * Add CUPTI library in LD_LIBRARY_PATH and run any CUDA sample
- * with runtime more than 10 sec for demonstration of the
- * CUPTI sample
- */
+* Copyright 2020-2022 NVIDIA Corporation. All rights reserved.
+*
+* Sample CUPTI based injection to attach and detach CUPTI
+* For detaching, it uses CUPTI API cuptiFinalize().
+*
+* It is recommended to invoke API cuptiFinalize() in the
+* exit callsite of any CUDA Driver/Runtime API.
+*
+* API cuptiFinalize() destroys and cleans up all the
+* resources associated with CUPTI in the current process.
+* After CUPTI detaches from the process, the process will
+* keep on running with no CUPTI attached to it.
+*
+* CUPTI can be attached by calling any CUPTI API as CUPTI
+* supports lazy initialization. Any subsequent CUPTI API
+* call will reinitialize the CUPTI.
+*
+* You can attach and detach CUPTI any number of times.
+*
+* After building the sample, set the following environment variable
+* export CUDA_INJECTION64_PATH=<full_path>/libCuptiFinalize.so
+* Add CUPTI library in LD_LIBRARY_PATH and run any CUDA sample
+* with runtime more than 10 sec for demonstration of the
+* CUPTI sample
+*/
+
 
 // System headers
 #include <pthread.h>
@@ -31,275 +32,355 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+
 // CUDA headers
 #include <cuda.h>
+
 
 // CUPTI headers
 #include "helper_cupti_activity.h"
 
+
 // Macros
 #define STDCALL
+
 
 #define PTHREAD_CALL(call)                                                         \
 do                                                                                 \
 {                                                                                  \
-    int _status = call;                                                            \
-    if (_status != 0)                                                              \
-    {                                                                              \
-        fprintf(stderr, "%s:%d: error: function %s failed with error code %d.\n",  \
-                __FILE__, __LINE__, #call, _status);                               \
-                                                                                   \
-        exit(EXIT_FAILURE);                                                        \
-    }                                                                              \
+   int _status = call;                                                            \
+   if (_status != 0)                                                              \
+   {                                                                              \
+       fprintf(stderr, "%s:%d: error: function %s failed with error code %d.\n",  \
+               __FILE__, __LINE__, #call, _status);                               \
+                                                                                  \
+       exit(EXIT_FAILURE);                                                        \
+   }                                                                              \
 } while (0)
+
+
 
 
 // Global Structure.
 typedef struct InjectionGlobals_st
 {
-    volatile uint32_t       initialized;
-    volatile uint32_t       detachCupti;
-    CUpti_SubscriberHandle  subscriberHandle;
+   volatile uint32_t       initialized;
+   volatile uint32_t       detachCupti;
+   CUpti_SubscriberHandle  subscriberHandle;
 
-    int                     frequency;
-    int                     tracingEnabled;
-    int                     terminateThread;
 
-    pthread_t               dynamicThread;
-    pthread_mutex_t         mutexFinalize;
-    pthread_cond_t          mutexCondition;
+   int                     frequency_a;
+   int                     frequency_b;
+   int                     tracingEnabled;
+   int                     terminateThread;
 
-    FILE*                   traceFile;
+
+   pthread_t               dynamicThread;
+   pthread_mutex_t         mutexFinalize;
+   pthread_cond_t          mutexCondition;
 } InjectionGlobals;
 
+
 InjectionGlobals injectionGlobals;
+
 
 // Functions
 static void
 InitializeInjectionGlobals(void)
 {
-    injectionGlobals.initialized        = 0;
-    injectionGlobals.subscriberHandle   = NULL;
-    injectionGlobals.detachCupti        = 0;
-    injectionGlobals.frequency          = 10; // in seconds
-    injectionGlobals.tracingEnabled     = 0;
-    injectionGlobals.terminateThread    = 0;
-    injectionGlobals.mutexFinalize      = PTHREAD_MUTEX_INITIALIZER;
-    injectionGlobals.mutexCondition     = PTHREAD_COND_INITIALIZER;
-    injectionGlobals.traceFile          = NULL;
+   injectionGlobals.initialized        = 0;
+   injectionGlobals.subscriberHandle   = NULL;
+   injectionGlobals.detachCupti        = 0;
+   
+   // Get frequencies from environment variables, default to 5 if not set
+   const char* freq_a_str = getenv("FREQ_A");
+   const char* freq_b_str = getenv("FREQ_B");
+   
+   if (freq_a_str != NULL) {
+       int freq = atoi(freq_a_str);
+       if (freq > 0) {
+           injectionGlobals.frequency_a = freq;
+       } else {
+           fprintf(stderr, "Warning: Invalid FREQ_A value. Using default (5 seconds).\n");
+           injectionGlobals.frequency_a = 5;
+       }
+   } else {
+       injectionGlobals.frequency_a = 5; // Default value in seconds
+   }
 
+   if (freq_b_str != NULL) {
+       int freq = atoi(freq_b_str);
+       if (freq > 0) {
+           injectionGlobals.frequency_b = freq;
+       } else {
+           fprintf(stderr, "Warning: Invalid FREQ_B value. Using default (5 seconds).\n");
+           injectionGlobals.frequency_b = 5;
+       }
+   } else {
+       injectionGlobals.frequency_b = 5; // Default value in seconds
+   }
+   
+   injectionGlobals.tracingEnabled     = 0;
+   injectionGlobals.terminateThread    = 0;
+   injectionGlobals.mutexFinalize      = PTHREAD_MUTEX_INITIALIZER;
+   injectionGlobals.mutexCondition     = PTHREAD_COND_INITIALIZER;
 }
 
 static void
 AtExitHandler(void)
 {
-    injectionGlobals.terminateThread = 1;
+   injectionGlobals.terminateThread = 1;
 
-    // Force flush the activity buffers.
-    if (injectionGlobals.tracingEnabled)
-    {
-        DeInitCuptiTrace();
 
-        // Release mutex lock in AtExitHandler() function
-        // Scenario: The thread initiating detach might wait for cuptiFinalize() API
-        // call to take place which will signal for the mutex release.
-        // But there are no CUDA API callbacks after the thread initiates detach.
-        // This will cause the mutex to never be released causing a hang.
-        if (injectionGlobals.detachCupti)
-        {
-            PTHREAD_CALL(pthread_cond_broadcast(&injectionGlobals.mutexCondition));
-        }
-    }
+   // Force flush the activity buffers.
+   if (injectionGlobals.tracingEnabled)
+   {
+       DeInitCuptiTrace();
 
-    PTHREAD_CALL(pthread_join(injectionGlobals.dynamicThread, NULL));
 
-    if (injectionGlobals.traceFile)
-    {
-        fclose(injectionGlobals.traceFile);
-    }
+       // Release mutex lock in AtExitHandler() function
+       // Scenario: The thread initiating detach might wait for cuptiFinalize() API
+       // call to take place which will signal for the mutex release.
+       // But there are no CUDA API callbacks after the thread initiates detach.
+       // This will cause the mutex to never be released causing a hang.
+       if (injectionGlobals.detachCupti)
+       {
+           // PTHREAD_CALL(pthread_cond_broadcast(&injectionGlobals.mutexCondition));
+       }
+   }
+
+
+   PTHREAD_CALL(pthread_join(injectionGlobals.dynamicThread, NULL));
 }
+
 
 void RegisterAtExitHandler(void)
 {
-    atexit(&AtExitHandler);
+   atexit(&AtExitHandler);
 }
+
 
 void CUPTIAPI
 InjectionCallbackHandler(
-    void *pUserData,
-    CUpti_CallbackDomain domain,
-    CUpti_CallbackId callbackId,
-    void *pCallbackData)
+   void *pUserData,
+   CUpti_CallbackDomain domain,
+   CUpti_CallbackId callbackId,
+   void *pCallbackData)
 {
-    const CUpti_CallbackData *pCallbackInfo = (CUpti_CallbackData *)pCallbackData;
+   const CUpti_CallbackData *pCallbackInfo = (CUpti_CallbackData *)pCallbackData;
 
-    // Check last error.
-    CUPTI_API_CALL(cuptiGetLastError());
 
-    switch (domain)
-    {
-        case CUPTI_CB_DOMAIN_STATE:
-            HandleDomainStateCallback(callbackId, (CUpti_StateData *)pCallbackData);
-            break;
-        default:
-            break;
-    }
+   // Check last error.
+   CUPTI_API_CALL(cuptiGetLastError());
 
-    // This code path is taken only when we wish to perform the CUPTI teardown.
-    if (injectionGlobals.detachCupti)
-    {
-        switch (domain)
-        {
-            case CUPTI_CB_DOMAIN_RUNTIME_API:
-            case CUPTI_CB_DOMAIN_DRIVER_API:
-            {
-                if (pCallbackInfo->callbackSite == CUPTI_API_EXIT)
-                {
-                    // Detach CUPTI calling cuptiFinalize() API.
-                    DeInitCuptiTrace();
-                    CUPTI_API_CALL(cuptiFinalize());
-                    PTHREAD_CALL(pthread_cond_broadcast(&injectionGlobals.mutexCondition));
-                    if (injectionGlobals.traceFile)
-                    {
-                        fclose(injectionGlobals.traceFile);
-                        injectionGlobals.traceFile = NULL;
-                    }
-                }
-                break;
-            }
-            default:
-                break;
-        }
-    }
+
+   switch (domain)
+   {
+       case CUPTI_CB_DOMAIN_STATE:
+           HandleDomainStateCallback(callbackId, (CUpti_StateData *)pCallbackData);
+           break;
+       default:
+           break;
+   }
+
+
+   // This code path is taken only when we wish to perform the CUPTI teardown.
+   if (injectionGlobals.detachCupti)
+   {
+       switch (domain)
+       {
+           case CUPTI_CB_DOMAIN_RUNTIME_API:
+           case CUPTI_CB_DOMAIN_DRIVER_API:
+           {
+               if (pCallbackInfo->callbackSite == CUPTI_API_EXIT)
+               {
+                   // Detach CUPTI calling cuptiFinalize() API.
+                   // printf("Calling cuptiFinalize() API.\n");
+                   // CUPTI_API_CALL(cuptiActivityFlushAll(1));
+                   // CUPTI_API_CALL(cuptiFinalize());
+                   // PTHREAD_CALL(pthread_cond_broadcast(&injectionGlobals.mutexCondition));
+               }
+               break;
+           }
+           default:
+               break;
+       }
+   }
 }
+
 
 static void
 SetupCupti(void)
 {
-    UserData *pUserData = (UserData *)malloc(sizeof(UserData));
-    MEMORY_ALLOCATION_CALL(pUserData);
+   UserData *pUserData = (UserData *)malloc(sizeof(UserData));
+   MEMORY_ALLOCATION_CALL(pUserData);
 
-    memset(pUserData, 0, sizeof(UserData));
-    pUserData->pPostProcessActivityRecords = NULL;
-    pUserData->printActivityRecords        = 1;
-    //// Generate the filename for the trace file
-    pid_t pid = getpid();
-    time_t now = time(0);
-    char timestamp[20];
-    strftime(timestamp, sizeof(timestamp), "%Y%m%d_%H%M%S", localtime(&now));
-    int file_index = 0;
-    char filename[256];
-    snprintf(filename, sizeof(filename), "/tmp/cuda_activity_log_%s_%d_%d.log", timestamp, pid, file_index);
-//
-    // Open the trace file
-    injectionGlobals.traceFile = fopen(filename, "w");
-    if (!injectionGlobals.traceFile)
-    {
-        fprintf(stderr, "Failed to open trace file: %s\n", filename);
-        exit(EXIT_FAILURE);
+
+   memset(pUserData, 0, sizeof(UserData));
+   pUserData->pPostProcessActivityRecords = NULL;
+   pUserData->printActivityRecords        = 0;
+
+
+   // Common CUPTI Initialization.
+   InitCuptiTrace(pUserData, (void *)InjectionCallbackHandler, stdout);
+
+
+   injectionGlobals.subscriberHandle = globals.subscriberHandle;
+
+
+   // Subscribe Driver and Runtime callbacks to call cuptiFinalize in the entry/exit callback of these APIs.
+   // CUPTI_API_CALL(cuptiEnableDomain(1, injectionGlobals.subscriberHandle, CUPTI_CB_DOMAIN_RUNTIME_API));
+   // CUPTI_API_CALL(cuptiEnableDomain(1, injectionGlobals.subscriberHandle, CUPTI_CB_DOMAIN_DRIVER_API));
+
+
+   // NOTE: Enable per-thread activity buffer.
+   // NOTE: Comment out the below 3 lines if CUPTI version is not 12.3 or later.
+    // Check if per-thread activity should be enabled
+    const char* enable_per_thread = getenv("ENABLE_PER_THREAD_ACTIVITY");
+    if (enable_per_thread != NULL && strcmp(enable_per_thread, "1") == 0) {
+        size_t valueSize = sizeof(size_t);
+        const uint8_t attrPerThreadActivity = 1;
+        CUPTI_API_CALL(cuptiActivitySetAttribute(CUPTI_ACTIVITY_ATTR_PER_THREAD_ACTIVITY_BUFFER, &valueSize, (void*)&attrPerThreadActivity));
+        printf("Per-thread activity buffer enabled.\n");
+    } else {
+        printf("Per-thread activity buffer not enabled.\n");
     }
-    // Common CUPTI Initialization.
-    InitCuptiTrace(pUserData, (void *)InjectionCallbackHandler, injectionGlobals.traceFile);
 
-    injectionGlobals.subscriberHandle = globals.subscriberHandle;
 
-    // Subscribe Driver and Runtime callbacks to call cuptiFinalize in the entry/exit callback of these APIs.
-    CUPTI_API_CALL(cuptiEnableDomain(1, injectionGlobals.subscriberHandle, CUPTI_CB_DOMAIN_RUNTIME_API));
-    CUPTI_API_CALL(cuptiEnableDomain(1, injectionGlobals.subscriberHandle, CUPTI_CB_DOMAIN_DRIVER_API));
-
-    // Enable CUPTI activities.
-    //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
-    //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
-
-    CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-    CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMCPY));
-    //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_MEMSET));
-    CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
+   // Enable CUPTI activities.
+   //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_DRIVER));
+   //CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_RUNTIME));
+   CUPTI_API_CALL(cuptiActivityEnable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
+   //CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
 }
+
 
 void *DynamicAttachDetach(
-    void *arg)
+   void *arg)
 {
-    while (!injectionGlobals.terminateThread)
-    {
-        sleep(injectionGlobals.frequency);
-
-        // Check the condition again after sleep.
-        if (injectionGlobals.terminateThread)
-        {
-            break;
+   int iteration_count = 0;
+   int sleep_time = 0;
+   while (!injectionGlobals.terminateThread)
+   {
+       // Choose sleep time based on tracingEnabled
+        if (iteration_count < 2) {
+            sleep_time = 5;  // 0.1 seconds for first two iterations
+            iteration_count++;
+        } else {
+            // Choose sleep time based on tracingEnabled
+            sleep_time = injectionGlobals.tracingEnabled ? 
+                         injectionGlobals.frequency_a : 
+                         injectionGlobals.frequency_b;
         }
+       
+       sleep(sleep_time);
 
-        // Turn on/off CUPTI at a regular interval.
-        if (injectionGlobals.tracingEnabled)
-        {
-            printf("\nCUPTI detach starting ...\n");
+       // Check the condition again after sleep.
+       if (injectionGlobals.terminateThread)
+       {
+           break;
+       }
 
-            // Force flush activity buffers.
-            CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
-            CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMCPY));
-            //CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_MEMSET));
-   	    CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_SYNCHRONIZATION));
 
-            CUPTI_API_CALL(cuptiActivityFlushAll(1));
-            injectionGlobals.detachCupti = 1;
+       // Turn on/off CUPTI at a regular interval.
+       if (injectionGlobals.tracingEnabled)
+       {
+           printf("\nCUPTI detach starting ...\n");
 
-            // Lock and wait for callbackHandler() to perform CUPTI teardown.
-            PTHREAD_CALL(pthread_mutex_lock(&injectionGlobals.mutexFinalize));
-            PTHREAD_CALL(pthread_cond_wait(&injectionGlobals.mutexCondition, &injectionGlobals.mutexFinalize));
-            PTHREAD_CALL(pthread_mutex_unlock(&injectionGlobals.mutexFinalize));
 
-            printf("CUPTI detach completed.\n");
+           // Unsubscribe Driver and Runtime callbacks to call cuptiFinalize in the entry/exit callback of these APIs.
+           // CUPTI_API_CALL(cuptiEnableDomain(0, injectionGlobals.subscriberHandle, CUPTI_CB_DOMAIN_RUNTIME_API));
+           // CUPTI_API_CALL(cuptiEnableDomain(0, injectionGlobals.subscriberHandle, CUPTI_CB_DOMAIN_DRIVER_API));
 
-            injectionGlobals.detachCupti = 0;
-            injectionGlobals.tracingEnabled = 0;
-            injectionGlobals.subscriberHandle = 0;
 
-            if (globals.pUserData) {
-                free(globals.pUserData);
-            }
+           //CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_DRIVER));
+           //CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_RUNTIME));
+           CUPTI_API_CALL(cuptiActivityDisable(CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL));
 
-        }
-        else
-        {
-            printf("\nCUPTI attach starting ...\n");
-            
-            SetupCupti();
-            cuptiActivityEnableLatencyTimestamps(1);
-            injectionGlobals.tracingEnabled = 1;
 
-            printf("CUPTI attach completed.\n");
-        }
-    }
+           // Force flush activity buffers.
+           DeInitCuptiTrace();
+           injectionGlobals.detachCupti = 1;
 
-    return NULL;
+
+           // Lock and wait for callbackHandler() to perform CUPTI teardown.
+           // PTHREAD_CALL(pthread_mutex_lock(&injectionGlobals.mutexFinalize));
+           // PTHREAD_CALL(pthread_cond_wait(&injectionGlobals.mutexCondition, &injectionGlobals.mutexFinalize));
+           // PTHREAD_CALL(pthread_mutex_unlock(&injectionGlobals.mutexFinalize));
+
+
+           printf("CUPTI detach completed.\n");
+
+
+           injectionGlobals.detachCupti = 0;
+           injectionGlobals.tracingEnabled = 0;
+           injectionGlobals.subscriberHandle = 0;
+
+
+           // if (globals.pUserData) {
+           //     free(globals.pUserData);
+           // }
+
+
+       }
+       else
+       {
+           printf("\nCUPTI attach starting ...\n");
+
+
+           SetupCupti();
+           injectionGlobals.tracingEnabled = 1;
+
+
+           printf("CUPTI attach completed.\n");
+       }
+   }
+
+
+   return NULL;
 }
+
 
 extern "C" int
 InitializeInjection(void)
 {
-    if (injectionGlobals.initialized)
-    {
-        return 1;
-    }
-
-    // Initialize InjectionGlobals structure.
-    InitializeInjectionGlobals();
-
-    // Initialize Mutex.
-    PTHREAD_CALL(pthread_mutex_init(&injectionGlobals.mutexFinalize, 0));
-
-    RegisterAtExitHandler();
+   if (injectionGlobals.initialized)
+   {
+       return 1;
+   }
+    uint32_t version;
+    cuptiGetVersion(&version);
     
+    
+    printf("CUPTI API 버전: %d.%d.%d\n", 
+           version);
 
-    // Initialize CUPTI.
-    SetupCupti();
-    CUPTI_API_CALL(cuptiActivityEnableLatencyTimestamps(1));
-    injectionGlobals.tracingEnabled = 1;
+   // Initialize InjectionGlobals structure.
+   InitializeInjectionGlobals();
 
-    // Launch the thread.
-    PTHREAD_CALL(pthread_create(&injectionGlobals.dynamicThread, NULL, DynamicAttachDetach, NULL));
-    injectionGlobals.initialized = 1;
 
-    return 1;
+   // Initialize Mutex.
+   PTHREAD_CALL(pthread_mutex_init(&injectionGlobals.mutexFinalize, 0));
+
+
+   RegisterAtExitHandler();
+
+
+   // Initialize CUPTI.
+   SetupCupti();
+   injectionGlobals.tracingEnabled = 1;
+
+
+    // Launch the thread only if ENABLE_DYNAMIC is set to 1
+    const char* enable_dynamic = getenv("ENABLE_DYNAMIC");
+    if (enable_dynamic != NULL && strcmp(enable_dynamic, "1") == 0) {
+        PTHREAD_CALL(pthread_create(&injectionGlobals.dynamicThread, NULL, DynamicAttachDetach, NULL));
+        printf("Dynamic thread created as ENABLE_DYNAMIC is set to 1\n");
+    } else {
+        printf("Dynamic thread not created as ENABLE_DYNAMIC is not set to 1\n");
+    }
+   injectionGlobals.initialized = 1;
+
+
+   return 1;
 }
